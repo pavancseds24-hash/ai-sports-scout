@@ -1,114 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = "http://localhost:5000/api/athletes";
+const API = "http://localhost:5000/api/athletes";
 
 function App() {
-  const [view, setView] = useState('register'); // 'register', 'coach', 'recruiter'
-  const [formData, setFormData] = useState({ name: '', age: '', sport: 'Cricket', location: '', stats: '', achievements: '', video: '' });
-  const [analysis, setAnalysis] = useState(null);
-  const [coachQ, setCoachQ] = useState("");
-  const [coachA, setCoachA] = useState("");
-  const [matches, setMatches] = useState([]);
-  const [filter, setFilter] = useState({ sport: 'Cricket', minScore: 70 });
+  const [tab, setTab] = useState('register');
+  const [form, setForm] = useState({ name: '', age: '', sport: 'Cricket', location: '', stats: '' });
+  const [data, setData] = useState({ analysis: "", coachA: "", matches: [] });
 
-  // 1. & 2. Athlete Registration & Profile System
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleAction = async (type) => {
     try {
-      const res = await axios.post(`${API_URL}/register`, {
-        ...formData, performance_stats: { data: formData.stats }
-      });
-      setAnalysis(res.data.analysis);
-      alert("Profile Created & AI Analysis Complete!");
-    } catch (err) { alert("Registration Failed. Check Backend/API Key."); }
-  };
-
-  // 3. AI Sports Coach
-  const askCoach = async () => {
-    try {
-      const res = await axios.post(`${API_URL}/ask-coach`, { athlete_id: 1, question: coachQ });
-      setCoachA(res.data.coach_advice);
-    } catch (err) { alert("Coach Error."); }
-  };
-
-  // 5. AI Recruiter Match System
-  const fetchMatches = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/recruiters/matches?sport=${filter.sport}&min_score=${filter.minScore}`);
-      setMatches(res.data);
-    } catch (err) { alert("Match System Error."); }
+      if (type === 'reg') {
+        const res = await axios.post(`${API}/register`, { ...form, performance_stats: { val: form.stats } });
+        setData({ ...data, analysis: res.data.analysis });
+        alert("Success: Profile & AI Analysis Created!");
+      } else if (type === 'coach') {
+        const res = await axios.post(`${API}/ask-coach`, { athlete_id: 1, question: "How to improve?" });
+        setData({ ...data, coachA: res.data.coach_advice });
+      } else {
+        const res = await axios.get(`${API}/recruiters/matches?sport=${form.sport}`);
+        setData({ ...data, matches: res.data });
+      }
+    } catch (e) { alert("Backend Offline!"); }
   };
 
   return (
-    <div style={styles.container}>
-      <nav style={styles.nav}>
-        <h2 style={{color: 'white'}}>🏆 AI Sports Scout</h2>
-        <div>
-          <button onClick={() => setView('register')} style={styles.navBtn}>Register</button>
-          <button onClick={() => setView('coach')} style={styles.navBtn}>AI Coach</button>
-          <button onClick={() => setView('recruiter')} style={styles.navBtn}>Recruiters</button>
-        </div>
+    <div style={{ backgroundColor: '#121212', color: 'white', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+      <nav style={{ padding: '20px', backgroundColor: '#1f1f1f', display: 'flex', gap: '20px', borderBottom: '1px solid #333' }}>
+        <h2 style={{ margin: 0, color: '#00d1b2' }}>AI Sports Scout</h2>
+        {['register', 'coach', 'recruiter'].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ background: 'none', border: 'none', color: tab === t ? '#00d1b2' : '#888', cursor: 'pointer', fontWeight: 'bold' }}>
+            {t.toUpperCase()}
+          </button>
+        ))}
       </nav>
 
-      {view === 'register' && (
-        <section style={styles.section}>
-          <h2>Athlete Registration & AI Analyzer</h2>
-          <form onSubmit={handleRegister} style={styles.form}>
-            <input placeholder="Name" style={styles.input} onChange={e => setFormData({...formData, name: e.target.value})} required />
-            <input type="number" placeholder="Age" style={styles.input} onChange={e => setFormData({...formData, age: e.target.value})} required />
-            <select style={styles.input} onChange={e => setFormData({...formData, sport: e.target.value})}>
-              {['Cricket', 'Football', 'Basketball', 'Athletics', 'Kabaddi', 'Volleyball', 'Tennis', 'Badminton'].map(s => <option key={s}>{s}</option>)}
-            </select>
-            <input placeholder="Location" style={styles.input} onChange={e => setFormData({...formData, location: e.target.value})} />
-            <textarea placeholder="Performance Stats (e.g. 100m in 11s)" style={styles.input} onChange={e => setFormData({...formData, stats: e.target.value})} />
-            <button type="submit" style={styles.actionBtn}>Analyze & Save</button>
-          </form>
-          {analysis && <div style={styles.result}><h3>AI Analysis Result:</h3><p>{analysis}</p></div>}
-        </section>
-      )}
+      <div style={{ maxWidth: '900px', margin: '40px auto', padding: '20px' }}>
+        {tab === 'register' && (
+          <div style={{ background: '#1f1f1f', padding: '30px', borderRadius: '12px' }}>
+            <h3>1 & 2. Athlete Registration & Profile System</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <input style={s.in} placeholder="Name" onChange={e => setForm({...form, name: e.target.value})} />
+              <input style={s.in} placeholder="Age" type="number" onChange={e => setForm({...form, age: e.target.value})} />
+              <select style={s.in} onChange={e => setForm({...form, sport: e.target.value})}>
+                {['Cricket', 'Football', 'Basketball', 'Athletics', 'Kabaddi', 'Volleyball', 'Tennis', 'Badminton'].map(sp => <option key={sp}>{sp}</option>)}
+              </select>
+              <input style={s.in} placeholder="Location" onChange={e => setForm({...form, location: e.target.value})} />
+            </div>
+            <textarea style={{ ...s.in, marginTop: '15px', height: '80px' }} placeholder="Performance Stats" onChange={e => setForm({...form, stats: e.target.value})} />
+            <button style={s.btn} onClick={() => handleAction('reg')}>4. RUN AI PERFORMANCE ANALYZER</button>
+            {data.analysis && <div style={s.res}><h4>AI Analysis:</h4><p>{data.analysis}</p></div>}
+          </div>
+        )}
 
-      {view === 'coach' && (
-        <section style={styles.section}>
-          <h2>AI Sports Coach</h2>
-          <input placeholder="Ask about training, diet, or drills..." style={styles.input} onChange={e => setCoachQ(e.target.value)} />
-          <button onClick={askCoach} style={styles.actionBtn}>Get Professional Advice</button>
-          {coachA && <div style={styles.result}><h3>Coach Plan:</h3><pre style={{whiteSpace: 'pre-wrap'}}>{coachA}</pre></div>}
-        </section>
-      )}
+        {tab === 'coach' && (
+          <div style={{ background: '#1f1f1f', padding: '30px', borderRadius: '12px' }}>
+            <h3>3. AI Sports Coach (LLM Integration)</h3>
+            <input style={s.in} placeholder="Ask coaching question..." />
+            <button style={{ ...s.btn, backgroundColor: '#3273dc' }} onClick={() => handleAction('coach')}>GET AI COACH PLAN</button>
+            {data.coachA && <div style={s.res}><pre style={{ whiteSpace: 'pre-wrap' }}>{data.coachA}</pre></div>}
+          </div>
+        )}
 
-      {view === 'recruiter' && (
-        <section style={styles.section}>
-          <h2>Recruiter Match System</h2>
-          <select style={styles.input} onChange={e => setFilter({...filter, sport: e.target.value})}>
-            {['Cricket', 'Football', 'Basketball', 'Athletics', 'Kabaddi'].map(s => <option key={s}>{s}</option>)}
-          </select>
-          <button onClick={fetchMatches} style={styles.actionBtn}>Find Top Athletes</button>
-          <div style={{marginTop: '20px'}}>
-            {matches.map(m => (
-              <div key={m.id} style={styles.matchCard}>
-                <h4>{m.name} ({m.sport})</h4>
-                <p>AI Score: {m.ai_score}%</p>
-                <p><em>{m.compatibility}</em></p>
+        {tab === 'recruiter' && (
+          <div style={{ background: '#1f1f1f', padding: '30px', borderRadius: '12px' }}>
+            <h3>5. AI Recruiter Match System</h3>
+            <button style={s.btn} onClick={() => handleAction('rec')}>FIND MATCHING ATHLETES</button>
+            {data.matches.map(m => (
+              <div key={m.id} style={{ padding: '15px', borderBottom: '1px solid #333' }}>
+                <p><strong>{m.name}</strong> - Score: {m.ai_score}%</p>
+                <p style={{ color: '#00d1b2' }}>{m.compatibility}</p>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-const styles = {
-  container: { fontFamily: 'Segoe UI', backgroundColor: '#f0f2f5', minHeight: '100vh' },
-  nav: { display: 'flex', justifyContent: 'space-between', padding: '10px 50px', backgroundColor: '#1a73e8', alignItems: 'center' },
-  navBtn: { background: 'none', border: 'none', color: 'white', marginLeft: '20px', cursor: 'pointer', fontSize: '16px' },
-  section: { maxWidth: '900px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' },
-  form: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' },
-  input: { padding: '12px', border: '1px solid #ddd', borderRadius: '4px', width: '100%', boxSizing: 'border-box' },
-  actionBtn: { padding: '12px', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' },
-  result: { marginTop: '20px', padding: '20px', backgroundColor: '#e8f0fe', borderRadius: '4px', borderLeft: '5px solid #1a73e8' },
-  matchCard: { padding: '15px', borderBottom: '1px solid #eee' }
+const s = {
+  in: { width: '100%', padding: '12px', background: '#2c2c2c', border: '1px solid #444', color: 'white', borderRadius: '6px', boxSizing: 'border-box' },
+  btn: { width: '100%', padding: '14px', background: '#00d1b2', border: 'none', color: 'white', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', marginTop: '15px' },
+  res: { marginTop: '20px', padding: '20px', backgroundColor: '#2c2c2c', borderRadius: '8px', borderLeft: '4px solid #00d1b2' }
 };
 
 export default App;
