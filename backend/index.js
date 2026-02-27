@@ -9,9 +9,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow your React app
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  origin: "http://localhost:3000",
+  methods: ["GET", "POST"],
+  credentials: true
 }));
 
 app.use(bodyParser.json());
