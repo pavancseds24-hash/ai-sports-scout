@@ -62,4 +62,18 @@ const s = {
   box: { marginTop: '15px', padding: '15px', background: 'white', borderLeft: '5px solid #2ecc71', borderRadius: '4px' }
 };
 
+const handleRegister = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await axios.post('http://localhost:5000/api/athletes/register', {
+      ...formData, performance_stats: { summary: formData.stats }
+    });
+    setAnalysis(res.data.analysis);
+    alert("Profile Created!");
+  } catch (err) { 
+    console.error(err);
+    alert("Backend Error: " + (err.response?.data?.error || err.message)); 
+  }
+};
+
 export default App;
