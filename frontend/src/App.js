@@ -1,75 +1,58 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API = "http://localhost:5000/api/athletes";
-
 function App() {
   const [tab, setTab] = useState('register');
-  const [form, setForm] = useState({ name: '', age: '', sport: 'Cricket', location: '', stats: '' });
-  const [data, setData] = useState({ analysis: "", coachA: "", matches: [] });
+  const [form, setForm] = useState({ name: '', age: '', sport: 'Cricket', location: '', stats: '', achievements: '' });
+  const [results, setResults] = useState({ analysis: '', coach: '', athletes: [] });
 
-  const handleAction = async (type) => {
+  const apiCall = async (type) => {
     try {
       if (type === 'reg') {
-        const res = await axios.post(`${API}/register`, { ...form, performance_stats: { val: form.stats } });
-        setData({ ...data, analysis: res.data.analysis });
-        alert("Success: Profile & AI Analysis Created!");
+        const res = await axios.post('http://localhost:5000/api/athletes/register', form);
+        setResults({ ...results, analysis: res.data.analysis });
+        alert("Athlete Profile Saved & Analyzed!");
       } else if (type === 'coach') {
-        const res = await axios.post(`${API}/ask-coach`, { athlete_id: 1, question: "How to improve?" });
-        setData({ ...data, coachA: res.data.coach_advice });
+        const res = await axios.post('http://localhost:5000/api/athletes/ask-coach', { athlete_id: 1, question: "Plan?" });
+        setResults({ ...results, coach: res.data.coach_advice });
       } else {
-        const res = await axios.get(`${API}/recruiters/matches?sport=${form.sport}`);
-        setData({ ...data, matches: res.data });
+        const res = await axios.get(`http://localhost:5000/api/athletes/matches?sport=${form.sport}`);
+        setResults({ ...results, athletes: res.data });
       }
-    } catch (e) { alert("Backend Offline!"); }
+    } catch (e) { alert("Server connection failed."); }
   };
 
   return (
-    <div style={{ backgroundColor: '#121212', color: 'white', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
-      <nav style={{ padding: '20px', backgroundColor: '#1f1f1f', display: 'flex', gap: '20px', borderBottom: '1px solid #333' }}>
-        <h2 style={{ margin: 0, color: '#00d1b2' }}>AI Sports Scout</h2>
-        {['register', 'coach', 'recruiter'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ background: 'none', border: 'none', color: tab === t ? '#00d1b2' : '#888', cursor: 'pointer', fontWeight: 'bold' }}>
-            {t.toUpperCase()}
-          </button>
-        ))}
+    <div style={{ background: '#111', color: '#eee', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      <nav style={{ padding: '20px', background: '#222', display: 'flex', gap: '20px' }}>
+        <h2 style={{ color: '#00d1b2', margin: 0 }}>AI Sports Scout</h2>
+        <button onClick={() => setTab('register')}>Register</button>
+        <button onClick={() => setTab('coach')}>AI Coach</button>
+        <button onClick={() => setTab('recruiter')}>Recruiters</button>
       </nav>
 
-      <div style={{ maxWidth: '900px', margin: '40px auto', padding: '20px' }}>
+      <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
         {tab === 'register' && (
-          <div style={{ background: '#1f1f1f', padding: '30px', borderRadius: '12px' }}>
-            <h3>1 & 2. Athlete Registration & Profile System</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <input style={s.in} placeholder="Name" onChange={e => setForm({...form, name: e.target.value})} />
-              <input style={s.in} placeholder="Age" type="number" onChange={e => setForm({...form, age: e.target.value})} />
-              <select style={s.in} onChange={e => setForm({...form, sport: e.target.value})}>
-                {['Cricket', 'Football', 'Basketball', 'Athletics', 'Kabaddi', 'Volleyball', 'Tennis', 'Badminton'].map(sp => <option key={sp}>{sp}</option>)}
-              </select>
-              <input style={s.in} placeholder="Location" onChange={e => setForm({...form, location: e.target.value})} />
-            </div>
-            <textarea style={{ ...s.in, marginTop: '15px', height: '80px' }} placeholder="Performance Stats" onChange={e => setForm({...form, stats: e.target.value})} />
-            <button style={s.btn} onClick={() => handleAction('reg')}>4. RUN AI PERFORMANCE ANALYZER</button>
-            {data.analysis && <div style={s.res}><h4>AI Analysis:</h4><p>{data.analysis}</p></div>}
-          </div>
-        )}
-
-        {tab === 'coach' && (
-          <div style={{ background: '#1f1f1f', padding: '30px', borderRadius: '12px' }}>
-            <h3>3. AI Sports Coach (LLM Integration)</h3>
-            <input style={s.in} placeholder="Ask coaching question..." />
-            <button style={{ ...s.btn, backgroundColor: '#3273dc' }} onClick={() => handleAction('coach')}>GET AI COACH PLAN</button>
-            {data.coachA && <div style={s.res}><pre style={{ whiteSpace: 'pre-wrap' }}>{data.coachA}</pre></div>}
+          <div style={card}>
+            <h3>Athlete Profile & AI Analysis</h3>
+            <input style={inp} placeholder="Name" onChange={e => setForm({...form, name: e.target.value})} />
+            <select style={inp} onChange={e => setForm({...form, sport: e.target.value})}>
+              <option>Cricket</option><option>Football</option><option>Athletics</option>
+            </select>
+            <textarea style={inp} placeholder="Stats" onChange={e => setForm({...form, stats: e.target.value})} />
+            <button style={btn} onClick={() => apiCall('reg')}>Run Gen AI Analysis</button>
+            {results.analysis && <div style={resBox}>{results.analysis}</div>}
           </div>
         )}
 
         {tab === 'recruiter' && (
-          <div style={{ background: '#1f1f1f', padding: '30px', borderRadius: '12px' }}>
-            <h3>5. AI Recruiter Match System</h3>
-            <button style={s.btn} onClick={() => handleAction('rec')}>FIND MATCHING ATHLETES</button>
-            {data.matches.map(m => (
-              <div key={m.id} style={{ padding: '15px', borderBottom: '1px solid #333' }}>
-                <p><strong>{m.name}</strong> - Score: {m.ai_score}%</p>
-                <p style={{ color: '#00d1b2' }}>{m.compatibility}</p>
+          <div style={card}>
+            <h3>AI Recruiter Match System</h3>
+            <button style={btn} onClick={() => apiCall('match')}>Find Matching Athletes</button>
+            {results.athletes.map(a => (
+              <div key={a.id} style={{ borderBottom: '1px solid #444', padding: '10px' }}>
+                <strong>{a.name}</strong> - {a.sport} ({a.location}) <br/>
+                <small>AI Score: {a.ai_score}%</small>
               </div>
             ))}
           </div>
@@ -79,10 +62,9 @@ function App() {
   );
 }
 
-const s = {
-  in: { width: '100%', padding: '12px', background: '#2c2c2c', border: '1px solid #444', color: 'white', borderRadius: '6px', boxSizing: 'border-box' },
-  btn: { width: '100%', padding: '14px', background: '#00d1b2', border: 'none', color: 'white', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', marginTop: '15px' },
-  res: { marginTop: '20px', padding: '20px', backgroundColor: '#2c2c2c', borderRadius: '8px', borderLeft: '4px solid #00d1b2' }
-};
+const card = { background: '#222', padding: '30px', borderRadius: '12px' };
+const inp = { width: '100%', padding: '12px', margin: '10px 0', background: '#333', color: '#fff', border: 'none' };
+const btn = { width: '100%', padding: '12px', background: '#00d1b2', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer' };
+const resBox = { marginTop: '20px', padding: '15px', background: '#000', borderLeft: '4px solid #00d1b2', whiteSpace: 'pre-wrap' };
 
 export default App;
