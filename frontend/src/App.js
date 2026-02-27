@@ -2,69 +2,86 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 function App() {
-  const [tab, setTab] = useState('register');
-  const [form, setForm] = useState({ name: '', age: '', sport: 'Cricket', location: '', stats: '', achievements: '' });
-  const [results, setResults] = useState({ analysis: '', coach: '', athletes: [] });
+  const [view, setView] = useState('register');
+  const [sport, setSport] = useState('Cricket');
+  const [subType, setSubType] = useState(''); // Batting or Bowling
+  const [form, setForm] = useState({});
+  const [results, setResults] = useState({ analysis: '', matches: [] });
 
-  const apiCall = async (type) => {
+  const sportsFields = {
+    Cricket: {
+      Batting: ['Average', 'Strike Rate', 'Matches', 'Highest Score'],
+      Bowling: ['Average', 'Wickets', 'Economy', 'Matches']
+    },
+    Football: ['Goals', 'Assists', 'Matches', 'Position'],
+    Athletics: ['Best Timing', 'Event Name', 'Leagues Played']
+  };
+
+  const handleRegister = async () => {
     try {
-      if (type === 'reg') {
-        const res = await axios.post('http://localhost:5000/api/athletes/register', form);
+        // Fail-safe: Always save to DB even if AI is out of quota
+        const res = await axios.post('http://localhost:5000/api/athletes/register', {
+            ...form, sport, subType, name: form.name, location: form.location
+        });
         setResults({ ...results, analysis: res.data.analysis });
-        alert("Athlete Profile Saved & Analyzed!");
-      } else if (type === 'coach') {
-        const res = await axios.post('http://localhost:5000/api/athletes/ask-coach', { athlete_id: 1, question: "Plan?" });
-        setResults({ ...results, coach: res.data.coach_advice });
-      } else {
-        const res = await axios.get(`http://localhost:5000/api/athletes/matches?sport=${form.sport}`);
-        setResults({ ...results, athletes: res.data });
-      }
-    } catch (e) { alert("Server connection failed."); }
+        alert("Registration Successful!");
+    } catch (e) { alert("Registration Error."); }
   };
 
   return (
-    <div style={{ background: '#111', color: '#eee', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <nav style={{ padding: '20px', background: '#222', display: 'flex', gap: '20px' }}>
-        <h2 style={{ color: '#00d1b2', margin: 0 }}>AI Sports Scout</h2>
-        <button onClick={() => setTab('register')}>Register</button>
-        <button onClick={() => setTab('coach')}>AI Coach</button>
-        <button onClick={() => setTab('recruiter')}>Recruiters</button>
+    <div style={s.container}>
+      <nav style={s.nav}>
+        <button onClick={() => setView('register')}>Register</button>
+        <button onClick={() => setView('analyze')}>Deep AI Analysis</button>
+        <button onClick={() => setView('recruiter')}>Recruiter Dashboard</button>
       </nav>
 
-      <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
-        {tab === 'register' && (
-          <div style={card}>
-            <h3>Athlete Profile & AI Analysis</h3>
-            <input style={inp} placeholder="Name" onChange={e => setForm({...form, name: e.target.value})} />
-            <select style={inp} onChange={e => setForm({...form, sport: e.target.value})}>
-              <option>Cricket</option><option>Football</option><option>Athletics</option>
-            </select>
-            <textarea style={inp} placeholder="Stats" onChange={e => setForm({...form, stats: e.target.value})} />
-            <button style={btn} onClick={() => apiCall('reg')}>Run Gen AI Analysis</button>
-            {results.analysis && <div style={resBox}>{results.analysis}</div>}
-          </div>
-        )}
+      {view === 'register' && (
+        <div style={s.card}>
+          <h3>Athlete Entry</h3>
+          <input placeholder="Name" style={s.inp} onChange={e => setForm({...form, name: e.target.value})} />
+          <select style={s.inp} onChange={e => { setSport(e.target.value); setSubType(''); }}>
+            <option>Cricket</option><option>Football</option><option>Athletics</option>
+          </select>
 
-        {tab === 'recruiter' && (
-          <div style={card}>
-            <h3>AI Recruiter Match System</h3>
-            <button style={btn} onClick={() => apiCall('match')}>Find Matching Athletes</button>
-            {results.athletes.map(a => (
-              <div key={a.id} style={{ borderBottom: '1px solid #444', padding: '10px' }}>
-                <strong>{a.name}</strong> - {a.sport} ({a.location}) <br/>
-                <small>AI Score: {a.ai_score}%</small>
-              </div>
-            ))}
+          {sport === 'Cricket' && (
+            <select style={s.inp} onChange={e => setSubType(e.target.value)}>
+              <option value="">Select Specialty</option>
+              <option>Batting</option><option>Bowling</option>
+            </select>
+          )}
+
+          {/* Dynamic Fields */}
+          {(sport === 'Cricket' ? sportsFields[sport][subType] : sportsFields[sport])?.map(field => (
+            <input key={field} placeholder={field} style={s.inp} onChange={e => setForm({...form, [field]: e.target.value})} />
+          ))}
+
+          <button style={s.btn} onClick={handleRegister}>Save to Scout Database</button>
+        </div>
+      )}
+
+      {view === 'analyze' && (
+        <div style={s.card}>
+          <h3>Pro Comparison & Career Path</h3>
+          <textarea style={{...s.inp, height: '100px'}} placeholder="Paste all your stats and league history here for deep analysis..." />
+          <button style={{...s.btn, background: '#1a73e8'}} onClick={() => {/* Call Deep Analyze API */}}>Analyze My Future</button>
+          <div style={s.resBox}>
+            <strong>AI Career Advisor:</strong>
+            <p>Your stats will be compared to legends like Virat Kohli. We will suggest 3-year milestones to secure your future in professional sports.</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-const card = { background: '#222', padding: '30px', borderRadius: '12px' };
-const inp = { width: '100%', padding: '12px', margin: '10px 0', background: '#333', color: '#fff', border: 'none' };
-const btn = { width: '100%', padding: '12px', background: '#00d1b2', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer' };
-const resBox = { marginTop: '20px', padding: '15px', background: '#000', borderLeft: '4px solid #00d1b2', whiteSpace: 'pre-wrap' };
+const s = {
+    container: { background: '#f4f7f6', minHeight: '100vh', fontFamily: 'Arial' },
+    nav: { background: '#2c3e50', padding: '15px', display: 'flex', gap: '20px', color: 'white' },
+    card: { maxWidth: '700px', margin: '30px auto', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' },
+    inp: { width: '100%', padding: '12px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '4px', boxSizing: 'border-box' },
+    btn: { width: '100%', padding: '15px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
+    resBox: { marginTop: '20px', padding: '15px', borderLeft: '5px solid #1a73e8', background: '#eef6ff' }
+};
 
 export default App;
