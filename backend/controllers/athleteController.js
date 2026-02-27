@@ -1,55 +1,63 @@
 const db = require('../config/db');
+const { OpenAI } = require('openai');
 
-// Mock AI Logic to bypass Quota/API errors
-const getMockAnalysis = (sport) => `
-Performance Summary: Excellent physical conditioning and technical skill in ${sport}.
-Strengths: High endurance, tactical awareness, and speed.
-Weaknesses: Needs improvement in high-pressure decision-making.
-Improvement Suggestions: Focus on interval training and mental game simulations.
-Talent Grade: A`;
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const getMockCoachAdvice = (sport, question) => `
-Goal: Improve ${sport} technique.
-Training Drills: 1. Shadow practice (15 mins), 2. High-intensity intervals (20 mins).
-Weekly Plan: Mon/Wed: Skill work. Tue/Thu: Strength. Fri: Match play.
-Diet Suggestions: Increase protein intake and stay hydrated with electrolytes.
-Common Mistakes: Rushing the technique instead of focusing on form.`;
-
+// 4. AI Performance Analyzer (Elite Comparison)
 exports.registerAthlete = async (req, res) => {
-    const { name, age, sport, location, performance_stats } = req.body;
+    const { name, age, sport, location, performance_stats, achievements } = req.body;
     try {
-        const analysis = getMockAnalysis(sport);
+        const statsStr = JSON.stringify(performance_stats);
+        
+        const prompt = `
+        You are an elite sports scout. Analyze this athlete:
+        - Name: ${name}
+        - Sport: ${sport}
+        - Age: ${age}
+        - Current Stats: ${statsStr}
+        - Achievements: ${achievements}
+
+        GEN AI TASK:
+        1. Compare these stats against the career benchmarks of elite legends in ${sport} (e.g., Virat Kohli for Cricket, Sunil Chhetri for Football, Neeraj Chopra for Athletics).
+        2. Identify specific technical gaps between this athlete and the pros.
+        3. Generate a "Talent Grade" (A, B, or C) and an "AI Pro-Potential Score" (0-100).
+        4. Provide a structured Performance Summary, Strengths, and Weaknesses.`;
+
+        const aiResponse = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "system", content: "You are a professional sports analyst." }, { role: "user", content: prompt }],
+        });
+
+        const analysis = aiResponse.choices[0].message.content;
+
         const [result] = await db.execute(
             `INSERT INTO athletes (name, age, sport, location, performance_stats, ai_summary, ai_score) 
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [name, age, sport, location, JSON.stringify(performance_stats), analysis, 85]
+            [name, age, sport, location, statsStr, analysis, 85] // aiScore can be parsed from the response
         );
+
         res.status(201).json({ message: "Athlete registered!", id: result.insertId, analysis });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("LLM Error:", error.message);
+        res.status(500).json({ error: "LLM API Limit Reached or Quota Exceeded." });
     }
 };
 
+// 3. AI Sports Coach (Structured Plan)
 exports.askAICoach = async (req, res) => {
     const { athlete_id, question } = req.body;
     try {
         const [athlete] = await db.execute('SELECT sport FROM athletes WHERE id = ?', [athlete_id]);
         const sport = athlete[0]?.sport || "General";
-        const advice = getMockCoachAdvice(sport, question);
-        await db.execute('INSERT INTO coach_queries (athlete_id, query, ai_response) VALUES (?, ?, ?)', [athlete_id, question, advice]);
-        res.json({ coach_advice: advice });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
 
-exports.getRecruiterMatches = async (req, res) => {
-    try {
-        const { sport } = req.query;
-        const [athletes] = await db.execute('SELECT * FROM athletes WHERE sport = ?', [sport]);
-        const matchedAthletes = athletes.map(a => ({
-            ...a, compatibility: `This athlete matches 85% of your selection criteria for ${sport}.`
-        }));
-        res.json(matchedAthletes);
-    } catch (error) { res.status(500).json({ error: error.message }); }
+        const prompt = `Athlete Sport: ${sport}. Question: "${question}". 
+        Provide a structured response: Goal, Training Drills, Weekly Plan, Diet Suggestions, and Common Mistakes.`;
+
+        const aiResponse = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }],
+        });
+
+        res.json({ coach_advice: aiResponse.choices[0].message.content });
+    } catch (error) { res.status(500).json({ error: "AI Coach is busy." }); }
 };
