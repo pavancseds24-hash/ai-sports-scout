@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const athleteController = require('../controllers/athleteController');
 
-// Define routes clearly
+// Ensure these are functions and not undefined
 router.post('/register', athleteController.registerAthlete);
-router.post('/deep-analyze', athleteController.deepAnalyze); // New route for the Analyze tab
+router.post('/ask-coach', athleteController.askAICoach);
 router.get('/matches', athleteController.getRecruiterMatches);
 
 module.exports = router;

@@ -4,84 +4,91 @@ import axios from 'axios';
 function App() {
   const [view, setView] = useState('register');
   const [sport, setSport] = useState('Cricket');
-  const [subType, setSubType] = useState(''); // Batting or Bowling
+  const [subType, setSubType] = useState('');
   const [form, setForm] = useState({});
-  const [results, setResults] = useState({ analysis: '', matches: [] });
+  const [results, setResults] = useState({ analysis: '', coach: '', athletes: [] });
 
-  const sportsFields = {
-    Cricket: {
-      Batting: ['Average', 'Strike Rate', 'Matches', 'Highest Score'],
-      Bowling: ['Average', 'Wickets', 'Economy', 'Matches']
-    },
-    Football: ['Goals', 'Assists', 'Matches', 'Position'],
-    Athletics: ['Best Timing', 'Event Name', 'Leagues Played']
-  };
-
-  const handleRegister = async () => {
+  const handleAction = async (type) => {
     try {
-        // Fail-safe: Always save to DB even if AI is out of quota
-        const res = await axios.post('http://localhost:5000/api/athletes/register', {
-            ...form, sport, subType, name: form.name, location: form.location
-        });
+      const base = "http://localhost:5000/api/athletes";
+      if (type === 'reg') {
+        const res = await axios.post(`${base}/register`, { ...form, sport, subType });
         setResults({ ...results, analysis: res.data.analysis });
         alert("Registration Successful!");
-    } catch (e) { alert("Registration Error."); }
+      } else if (type === 'coach') {
+        const res = await axios.post(`${base}/ask-coach`, { question: form.coachQ });
+        setResults({ ...results, coach: res.data.coach_advice });
+      } else {
+        const res = await axios.get(`${base}/matches`);
+        setResults({ ...results, athletes: res.data });
+      }
+    } catch (e) { alert("Backend connection failed."); }
   };
 
   return (
-    <div style={s.container}>
-      <nav style={s.nav}>
-        <button onClick={() => setView('register')}>Register</button>
-        <button onClick={() => setView('analyze')}>Deep AI Analysis</button>
-        <button onClick={() => setView('recruiter')}>Recruiter Dashboard</button>
+    <div style={{ background: '#0f172a', color: '#f8fafc', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      <nav style={{ background: '#1e293b', padding: '20px', display: 'flex', gap: '20px', borderBottom: '2px solid #334155' }}>
+        <h2 style={{ color: '#38bdf8', margin: 0 }}>SCOUT AI</h2>
+        {['register', 'analyzer', 'coach', 'recruiter'].map(t => <button key={t} onClick={() => setView(t)} style={{ background: 'none', border: 'none', color: view === t ? '#38bdf8' : '#94a3b8', cursor: 'pointer', fontWeight: 'bold' }}>{t.toUpperCase()}</button>)}
       </nav>
 
-      {view === 'register' && (
-        <div style={s.card}>
-          <h3>Athlete Entry</h3>
-          <input placeholder="Name" style={s.inp} onChange={e => setForm({...form, name: e.target.value})} />
-          <select style={s.inp} onChange={e => { setSport(e.target.value); setSubType(''); }}>
-            <option>Cricket</option><option>Football</option><option>Athletics</option>
-          </select>
-
-          {sport === 'Cricket' && (
-            <select style={s.inp} onChange={e => setSubType(e.target.value)}>
-              <option value="">Select Specialty</option>
-              <option>Batting</option><option>Bowling</option>
+      <div style={{ maxWidth: '900px', margin: '40px auto', padding: '20px' }}>
+        {view === 'register' && (
+          <div style={s.card}>
+            <h3>1. Athlete Registration</h3>
+            <input style={s.in} placeholder="Name" onChange={e => setForm({...form, name: e.target.value})} />
+            <select style={s.in} onChange={e => { setSport(e.target.value); setSubType(''); }}>
+                <option>Cricket</option><option>Football</option><option>Athletics</option>
             </select>
-          )}
-
-          {/* Dynamic Fields */}
-          {(sport === 'Cricket' ? sportsFields[sport][subType] : sportsFields[sport])?.map(field => (
-            <input key={field} placeholder={field} style={s.inp} onChange={e => setForm({...form, [field]: e.target.value})} />
-          ))}
-
-          <button style={s.btn} onClick={handleRegister}>Save to Scout Database</button>
-        </div>
-      )}
-
-      {view === 'analyze' && (
-        <div style={s.card}>
-          <h3>Pro Comparison & Career Path</h3>
-          <textarea style={{...s.inp, height: '100px'}} placeholder="Paste all your stats and league history here for deep analysis..." />
-          <button style={{...s.btn, background: '#1a73e8'}} onClick={() => {/* Call Deep Analyze API */}}>Analyze My Future</button>
-          <div style={s.resBox}>
-            <strong>AI Career Advisor:</strong>
-            <p>Your stats will be compared to legends like Virat Kohli. We will suggest 3-year milestones to secure your future in professional sports.</p>
+            {sport === 'Cricket' && (
+              <select style={s.in} onChange={e => setSubType(e.target.value)}>
+                <option value="">Select Specialty</option><option>Batting</option><option>Bowling</option>
+              </select>
+            )}
+            {subType === 'Batting' && <><input style={s.in} placeholder="Average" onChange={e=>setForm({...form, avg: e.target.value})} /><input style={s.in} placeholder="Strike Rate" onChange={e=>setForm({...form, sr: e.target.value})} /></>}
+            {subType === 'Bowling' && <><input style={s.in} placeholder="Wickets" onChange={e=>setForm({...form, wkts: e.target.value})} /><input style={s.in} placeholder="Economy" onChange={e=>setForm({...form, eco: e.target.value})} /></>}
+            <button style={s.btn} onClick={() => handleAction('reg')}>REGISTER & ANALYZE</button>
           </div>
-        </div>
-      )}
+        )}
+
+        {view === 'analyzer' && (
+          <div style={s.card}>
+            <h3>2 & 4. Elite Comparison Analyzer</h3>
+            <div style={s.resBox}>{results.analysis || "Results will appear after registration."}</div>
+          </div>
+        )}
+
+        {view === 'coach' && (
+          <div style={s.card}>
+            <h3>3. AI Coach (Gen AI)</h3>
+            <input style={s.in} placeholder="How can I improve my bowling pace?" onChange={e => setForm({...form, coachQ: e.target.value})} />
+            <button style={{...s.btn, background: '#38bdf8'}} onClick={() => handleAction('coach')}>ASK AI COACH</button>
+            {results.coach && <div style={s.resBox}>{results.coach}</div>}
+          </div>
+        )}
+
+        {view === 'recruiter' && (
+          <div style={s.card}>
+            <h3>5. Recruiter Match System</h3>
+            <button style={s.btn} onClick={() => handleAction('match')}>REFRESH ATHLETES</button>
+            {results.athletes.map(a => (
+              <div key={a.id} style={{ borderBottom: '1px solid #334155', padding: '15px' }}>
+                <strong>{a.name}</strong> - {a.sport} ({a.ai_score}%)
+                <p style={{ fontSize: '12px', color: '#94a3b8' }}>{a.ai_summary.substring(0, 150)}...</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 const s = {
-    container: { background: '#f4f7f6', minHeight: '100vh', fontFamily: 'Arial' },
-    nav: { background: '#2c3e50', padding: '15px', display: 'flex', gap: '20px', color: 'white' },
-    card: { maxWidth: '700px', margin: '30px auto', background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' },
-    inp: { width: '100%', padding: '12px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '4px', boxSizing: 'border-box' },
-    btn: { width: '100%', padding: '15px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
-    resBox: { marginTop: '20px', padding: '15px', borderLeft: '5px solid #1a73e8', background: '#eef6ff' }
+  card: { background: '#1e293b', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' },
+  in: { width: '100%', padding: '12px', margin: '10px 0', background: '#0f172a', color: 'white', border: '1px solid #334155', borderRadius: '6px' },
+  btn: { width: '100%', padding: '15px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' },
+  resBox: { marginTop: '20px', padding: '20px', background: '#0f172a', borderLeft: '4px solid #38bdf8', borderRadius: '4px', whiteSpace: 'pre-wrap' }
 };
 
 export default App;
